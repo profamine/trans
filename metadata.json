@@ -1,0 +1,8 @@
+{
+  "name": "Transcription Audio en Arabe",
+  "description": "Application simple pour enregistrer la voix et la convertir en texte arabe avec l'IA.",
+  "requestFramePermissions": [
+    "microphone"
+  ],
+  "majorCapabilities": []
+}

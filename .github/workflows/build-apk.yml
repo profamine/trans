@@ -1,0 +1,65 @@
+name: Build Android APK
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm' # Caching speeds up subsequent runs
+
+      - name: Install dependencies
+        run: npm ci # 'npm ci' is preferred for CI environments
+
+      - name: Build Web App
+        run: npm run build
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+          cache: 'gradle'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Capacitor Sync
+        run: |
+          # Install dependencies if they aren't in package.json
+          npm install @capacitor/core @capacitor/cli @capacitor/android
+          
+          # Initialize only if config is missing
+          if [ ! -f "capacitor.config.ts" ] && [ ! -f "capacitor.config.json" ]; then
+            npx cap init "Transcription Arabe" "com.transcription.arabe" --web-dir dist
+          fi
+          
+          # Add platform if missing, then sync
+          if [ ! -d "android" ]; then
+            npx cap add android
+          fi
+          npx cap sync android
+
+      - name: Build APK (Debug)
+        working-directory: ./android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: transcription-arabe-debug
+          path: android/app/build/outputs/apk/debug/app-debug.apk
