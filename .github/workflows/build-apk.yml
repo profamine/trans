@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - master
   workflow_dispatch:
 
 jobs:
@@ -18,10 +19,10 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm' # Caching speeds up subsequent runs
+          cache: 'npm'
 
       - name: Install dependencies
-        run: npm ci # 'npm ci' is preferred for CI environments
+        run: npm install # Using install here to ensure capacitor CLI is available
 
       - name: Build Web App
         run: npm run build
@@ -36,30 +37,27 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Capacitor Sync
+      - name: Capacitor Sync & Platform Setup
         run: |
-          # Install dependencies if they aren't in package.json
           npm install @capacitor/core @capacitor/cli @capacitor/android
-          
-          # Initialize only if config is missing
           if [ ! -f "capacitor.config.ts" ] && [ ! -f "capacitor.config.json" ]; then
             npx cap init "Transcription Arabe" "com.transcription.arabe" --web-dir dist
           fi
-          
-          # Add platform if missing, then sync
           if [ ! -d "android" ]; then
             npx cap add android
           fi
+          # Inject permission before sync
+          sed -i '/<application/i \    <uses-permission android:name="android.permission.RECORD_AUDIO" />' android/app/src/main/AndroidManifest.xml
           npx cap sync android
 
       - name: Build APK (Debug)
         working-directory: ./android
         run: |
           chmod +x gradlew
-          ./gradlew assembleDebug
+          ./gradlew assembleDebug --no-daemon
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: transcription-arabe-debug
+          name: app-release-debug
           path: android/app/build/outputs/apk/debug/app-debug.apk
